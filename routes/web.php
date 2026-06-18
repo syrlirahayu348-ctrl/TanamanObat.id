@@ -32,6 +32,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register.post');
     Route::get('/verify-email', [AuthController::class, 'verifyForm'])->name('verification.notice');
     Route::post('/verify-email', [AuthController::class, 'verify'])->name('verification.verify');
+    Route::post('/verify-email/resend', [AuthController::class, 'resendOtp'])->name('verification.resend');
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');

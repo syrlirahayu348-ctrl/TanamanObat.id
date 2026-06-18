@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rules;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\SendOtpMail;
+use Exception;
 
 class AuthController extends Controller
 {
@@ -55,7 +58,22 @@ class AuthController extends Controller
                     'verify_email'   => $user->email,
                 ]);
 
-                return redirect()->route('verification.notice')->with('info', 'Silakan verifikasi email Anda terlebih dahulu.');
+                // Kirim email OTP
+                $mailStatus = 'success';
+                try {
+                    Mail::to($user->email)->send(new SendOtpMail($otp, $user->name));
+                } catch (Exception $e) {
+                    $mailStatus = 'error';
+                    \Illuminate\Support\Facades\Log::error("OTP Login Mail Error: " . $e->getMessage());
+                }
+
+                if ($mailStatus === 'error') {
+                    session(['verify_mail_sent' => false]);
+                    return redirect()->route('verification.notice')->with('info', 'Silakan verifikasi email Anda. (Catatan: Pengiriman email gagal, silakan periksa konfigurasi email Anda. Kode OTP simulasi ditampilkan di bawah).');
+                }
+
+                session(['verify_mail_sent' => true]);
+                return redirect()->route('verification.notice')->with('success', 'Kode OTP baru telah dikirim ke email Anda. Silakan verifikasi email Anda.');
             }
 
             $request->session()->regenerate();
@@ -132,9 +150,24 @@ class AuthController extends Controller
             'verify_email'   => $user->email,
         ]);
 
+        // Kirim email OTP
+        $mailStatus = 'success';
+        try {
+            Mail::to($user->email)->send(new SendOtpMail($otp, $user->name));
+        } catch (Exception $e) {
+            $mailStatus = 'error';
+            \Illuminate\Support\Facades\Log::error("OTP Register Mail Error: " . $e->getMessage());
+        }
+
         RateLimiter::clear($rateKey);
 
-        return redirect()->route('verification.notice')->with('success', 'Akun berhasil dibuat! Silakan verifikasi email Anda.');
+        if ($mailStatus === 'error') {
+            session(['verify_mail_sent' => false]);
+            return redirect()->route('verification.notice')->with('success', 'Akun berhasil dibuat! (Catatan: Email verifikasi gagal terkirim. Anda dapat menggunakan kode OTP simulasi di bawah untuk melanjutkan pengujian).');
+        }
+
+        session(['verify_mail_sent' => true]);
+        return redirect()->route('verification.notice')->with('success', 'Akun berhasil dibuat! Kode verifikasi OTP telah dikirim ke email Anda.');
     }
 
     // Show email verification form
@@ -176,6 +209,45 @@ class AuthController extends Controller
         session()->forget(['verify_user_id', 'verify_otp', 'verify_email']);
 
         return redirect('/')->with('success', 'Email Anda berhasil diverifikasi! Selamat datang, ' . $user->name . '!');
+    }
+
+    // Resend OTP verification code
+    public function resendOtp(Request $request)
+    {
+        $userId = session('verify_user_id');
+        $email = session('verify_email');
+
+        if (!$userId || !$email) {
+            return redirect()->route('login')->withErrors(['email' => 'Sesi verifikasi telah berakhir. Silakan login kembali.']);
+        }
+
+        $user = User::find($userId);
+        if (!$user) {
+            return redirect()->route('login')->withErrors(['email' => 'Pengguna tidak ditemukan.']);
+        }
+
+        // Generate new OTP
+        $otp = rand(100000, 999999);
+        session([
+            'verify_otp' => $otp,
+        ]);
+
+        // Kirim email OTP
+        $mailStatus = 'success';
+        try {
+            Mail::to($user->email)->send(new SendOtpMail($otp, $user->name));
+        } catch (Exception $e) {
+            $mailStatus = 'error';
+            \Illuminate\Support\Facades\Log::error("OTP Resend Mail Error: " . $e->getMessage());
+        }
+
+        if ($mailStatus === 'error') {
+            session(['verify_mail_sent' => false]);
+            return back()->with('info', 'Kode OTP baru berhasil dibuat, namun gagal mengirim email. Pastikan konfigurasi SMTP di file .env Anda sudah benar. (Kode OTP simulasi diperbarui di bawah).');
+        }
+
+        session(['verify_mail_sent' => true]);
+        return back()->with('success', 'Kode OTP baru telah berhasil dikirim ke email Anda!');
     }
 
     // Logout
