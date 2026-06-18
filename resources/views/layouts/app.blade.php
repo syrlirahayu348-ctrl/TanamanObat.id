@@ -12,6 +12,135 @@
 </head>
 <body>
 
+{{-- ✅ Popup Verifikasi Email Berhasil --}}
+@if(session('verified'))
+<div class="verify-popup-overlay" id="verifyPopup">
+    <div class="verify-popup-card">
+        <div class="verify-popup-confetti">
+            <span>🎉</span><span>🌿</span><span>✨</span><span>🎊</span><span>🌱</span>
+        </div>
+        <div class="verify-popup-icon">
+            <svg viewBox="0 0 52 52" class="verify-checkmark">
+                <circle class="verify-checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                <path class="verify-checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+            </svg>
+        </div>
+        <h2 class="verify-popup-title">Email Terverifikasi! 🎉</h2>
+        <p class="verify-popup-msg">{{ session('verified') }}</p>
+        <p class="verify-popup-sub">Selamat bergabung di <strong>TanamanObat.id</strong>! Akun Anda siap digunakan.</p>
+        <button class="verify-popup-btn" onclick="closeVerifyPopup()">
+            Mulai Jelajahi 🌿
+        </button>
+    </div>
+</div>
+<style>
+.verify-popup-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.verify-popup-card {
+    background: #fff;
+    border-radius: 24px;
+    padding: 44px 40px 36px;
+    max-width: 420px; width: 90%;
+    text-align: center;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.2);
+    animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    position: relative; overflow: hidden;
+}
+@keyframes popIn {
+    from { opacity: 0; transform: scale(0.75) translateY(30px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.verify-popup-confetti {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 60px; overflow: hidden;
+    display: flex; align-items: center; justify-content: space-around;
+    font-size: 24px;
+    animation: confettiFall 1s ease-out;
+}
+@keyframes confettiFall {
+    from { opacity: 0; transform: translateY(-30px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.verify-popup-icon {
+    width: 90px; height: 90px;
+    margin: 8px auto 20px;
+}
+.verify-checkmark {
+    width: 90px; height: 90px;
+    border-radius: 50%;
+}
+.verify-checkmark__circle {
+    stroke: #15803d; stroke-width: 2;
+    stroke-dasharray: 166; stroke-dashoffset: 166;
+    animation: strokeDraw 0.6s cubic-bezier(0.65,0,0.45,1) 0.2s forwards;
+    fill: #f0fdf4;
+}
+.verify-checkmark__check {
+    stroke: #15803d; stroke-width: 3;
+    stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 48; stroke-dashoffset: 48;
+    animation: strokeDraw 0.4s cubic-bezier(0.65,0,0.45,1) 0.7s forwards;
+}
+@keyframes strokeDraw {
+    to { stroke-dashoffset: 0; }
+}
+.verify-popup-title {
+    font-size: 24px; font-weight: 800; color: #14532d;
+    margin: 0 0 10px; letter-spacing: -0.5px;
+}
+.verify-popup-msg {
+    font-size: 14px; color: #166534;
+    background: #f0fdf4; border: 1px solid #bbf7d0;
+    border-radius: 10px; padding: 10px 16px;
+    margin: 0 0 12px;
+}
+.verify-popup-sub {
+    font-size: 13.5px; color: #64748b;
+    margin: 0 0 24px; line-height: 1.6;
+}
+.verify-popup-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    color: #fff; border: none; border-radius: 14px;
+    padding: 14px 32px; font-size: 15px; font-weight: 700;
+    cursor: pointer; font-family: 'Inter', sans-serif;
+    transition: all 0.2s; box-shadow: 0 4px 16px rgba(21,128,61,0.35);
+    width: 100%; justify-content: center;
+}
+.verify-popup-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(21,128,61,0.45);
+}
+</style>
+<script>
+function closeVerifyPopup() {
+    const popup = document.getElementById('verifyPopup');
+    if (popup) {
+        popup.style.transition = 'opacity 0.3s ease';
+        popup.style.opacity = '0';
+        setTimeout(() => popup.remove(), 300);
+    }
+}
+// Tutup jika klik background
+document.addEventListener('DOMContentLoaded', () => {
+    const popup = document.getElementById('verifyPopup');
+    if (popup) {
+        popup.addEventListener('click', function(e) {
+            if (e.target === popup) closeVerifyPopup();
+        });
+        // Auto close after 8 detik
+        setTimeout(closeVerifyPopup, 8000);
+    }
+});
+</script>
+@endif
+
 {{-- Toast flash messages --}}
 @if(session('success'))
     <span data-toast="{{ session('success') }}" data-toast-type="success" class="hidden"></span>

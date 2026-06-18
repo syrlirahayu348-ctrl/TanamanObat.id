@@ -61,10 +61,13 @@ class AuthController extends Controller
                 // Kirim email OTP
                 $mailStatus = 'success';
                 try {
+                    \Illuminate\Support\Facades\Log::info("[OTP Login] Mengirim OTP ke: {$user->email}, OTP: {$otp}");
                     Mail::to($user->email)->send(new SendOtpMail($otp, $user->name));
+                    \Illuminate\Support\Facades\Log::info("[OTP Login] Email berhasil dikirim ke: {$user->email}");
                 } catch (Exception $e) {
                     $mailStatus = 'error';
-                    \Illuminate\Support\Facades\Log::error("OTP Login Mail Error: " . $e->getMessage());
+                    \Illuminate\Support\Facades\Log::error("[OTP Login] GAGAL kirim email ke {$user->email}: " . $e->getMessage());
+                    \Illuminate\Support\Facades\Log::error("[OTP Login] Stack trace: " . $e->getTraceAsString());
                 }
 
                 if ($mailStatus === 'error') {
@@ -153,10 +156,13 @@ class AuthController extends Controller
         // Kirim email OTP
         $mailStatus = 'success';
         try {
+            \Illuminate\Support\Facades\Log::info("[OTP Register] Mengirim OTP ke: {$user->email}, OTP: {$otp}");
             Mail::to($user->email)->send(new SendOtpMail($otp, $user->name));
+            \Illuminate\Support\Facades\Log::info("[OTP Register] Email berhasil dikirim ke: {$user->email}");
         } catch (Exception $e) {
             $mailStatus = 'error';
-            \Illuminate\Support\Facades\Log::error("OTP Register Mail Error: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("[OTP Register] GAGAL kirim email ke {$user->email}: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("[OTP Register] Stack trace: " . $e->getTraceAsString());
         }
 
         RateLimiter::clear($rateKey);
@@ -208,7 +214,8 @@ class AuthController extends Controller
         // Clear session verify data
         session()->forget(['verify_user_id', 'verify_otp', 'verify_email']);
 
-        return redirect('/')->with('success', 'Email Anda berhasil diverifikasi! Selamat datang, ' . $user->name . '!');
+        return redirect('/')
+            ->with('verified', 'Email Anda berhasil diverifikasi! Selamat datang, ' . $user->name . '!');
     }
 
     // Resend OTP verification code
