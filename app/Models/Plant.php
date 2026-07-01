@@ -97,4 +97,14 @@ class Plant extends Model
         if (!$user) return false;
         return $this->favorites()->where('user_id', $user->id)->exists();
     }
+
+    public function comments()
+    {
+        return $this->hasMany(Comment::class)->whereNull('parent_id')->latest();
+    }
+
+    public function averageRating()
+    {
+        return $this->hasMany(Comment::class)->whereNotNull('rating')->avg('rating') ?: 0;
+    }
 }

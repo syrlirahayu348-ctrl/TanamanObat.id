@@ -8,23 +8,15 @@ use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PlantController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\CommentController;
 use Illuminate\Support\Facades\Route;
 
-// ─── PUBLIC ROUTES ───────────────────────────────────────────────────────────
+// ─── PUBLIC / GUEST ROUTES ───────────────────────────────────────────────────
 Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::get('/search', [HomeController::class, 'search'])->name('search');
-
-Route::get('/plants', [PlantController::class, 'index'])->name('plants.index');
-Route::get('/plants/{plant:slug}', [PlantController::class, 'show'])->name('plants.show');
-
-Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
-Route::get('/categories/{category:slug}', [CategoryController::class, 'show'])->name('categories.show');
-
 Route::get('/faq', [HomeController::class, 'faq'])->name('faq');
 Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
 Route::post('/contact', [HomeController::class, 'submitContact'])->name('contact.submit');
 
-// ─── AUTH ROUTES ─────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'loginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.post');
@@ -33,18 +25,31 @@ Route::middleware('guest')->group(function () {
     Route::get('/verify-email', [AuthController::class, 'verifyForm'])->name('verification.notice');
     Route::post('/verify-email', [AuthController::class, 'verify'])->name('verification.verify');
     Route::post('/verify-email/resend', [AuthController::class, 'resendOtp'])->name('verification.resend');
+
+    // Google Socialite Routes
+    Route::get('/auth/google', [AuthController::class, 'redirectToGoogle'])->name('login.google');
+    Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
-// ─── USER ROUTES (auth) ───────────────────────────────────────────────────────
+// ─── AUTHENTICATED ROUTES (auth & active) ─────────────────────────────────────
 Route::middleware(['auth', 'active'])->group(function () {
+    Route::get('/search', [HomeController::class, 'search'])->name('search');
+    Route::get('/plants', [PlantController::class, 'index'])->name('plants.index');
+    Route::get('/plants/{plant:slug}', [PlantController::class, 'show'])->name('plants.show');
+    Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::get('/categories/{category:slug}', [CategoryController::class, 'show'])->name('categories.show');
+
     Route::get('/favorites', [FavoriteController::class, 'index'])->name('favorites.index');
     Route::post('/favorites/{plant:id}', [FavoriteController::class, 'toggle'])->name('favorites.toggle');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+
+    // Comment & Rating
+    Route::post('/plants/{plant}/comment', [CommentController::class, 'store'])->name('plants.comment.store');
 });
 
 // ─── EDITOR ROUTES ────────────────────────────────────────────────────────────
@@ -74,4 +79,9 @@ Route::middleware(['auth', 'active', 'role:admin'])->prefix('admin')->name('admi
     Route::patch('/users/{user}/role', [Admin\UserController::class, 'updateRole'])->name('users.role');
     Route::patch('/users/{user}/toggle-active', [Admin\UserController::class, 'toggleActive'])->name('users.toggle');
     Route::delete('/users/{user}', [Admin\UserController::class, 'destroy'])->name('users.destroy');
+
+    // Contact Messages management
+    Route::get('/messages', [Admin\ContactController::class, 'index'])->name('contact.index');
+    Route::post('/messages/{message}/reply', [Admin\ContactController::class, 'reply'])->name('contact.reply');
+    Route::delete('/messages/{message}', [Admin\ContactController::class, 'destroy'])->name('contact.destroy');
 });

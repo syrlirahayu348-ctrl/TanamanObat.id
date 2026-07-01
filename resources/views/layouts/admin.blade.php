@@ -53,6 +53,13 @@
                 <a href="{{ route('admin.users.index') }}" class="sidebar__link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
                     <span class="sidebar__link-icon">👥</span> Pengguna
                 </a>
+                @php $msgCount = \App\Models\ContactMessage::count(); @endphp
+                <a href="{{ route('admin.contact.index') }}" class="sidebar__link {{ request()->routeIs('admin.contact.*') ? 'active' : '' }}" style="display:flex;align-items:center;justify-content:space-between;">
+                    <span><span class="sidebar__link-icon">📬</span> Pesan Masuk</span>
+                    @if($msgCount > 0)
+                        <span style="background:#ef4444;color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;min-width:18px;text-align:center;">{{ $msgCount }}</span>
+                    @endif
+                </a>
             @endif
 
             <div class="sidebar__section">Lainnya</div>

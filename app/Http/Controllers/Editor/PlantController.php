@@ -12,16 +12,7 @@ class PlantController extends Controller
 {
     public function index()
     {
-        $plants = Plant::where('user_id', auth()->id())
-            ->orWhere(fn($q) => auth()->user()->isAdmin() ? $q : $q->where('id', -1))
-            ->with('category')
-            ->latest()
-            ->paginate(15);
-
-        if (auth()->user()->isAdmin()) {
-            $plants = Plant::with('category', 'user')->latest()->paginate(15);
-        }
-
+        $plants = Plant::with(['category', 'user', 'comments'])->latest()->paginate(15);
         return view('editor.plants.index', compact('plants'));
     }
 

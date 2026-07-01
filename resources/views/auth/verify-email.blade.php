@@ -26,21 +26,6 @@
 </div>
 @endif
 
-{{-- ⚠️ Peringatan cek spam — selalu tampil saat email terkirim --}}
-@if(session('verify_mail_sent') === true || session()->has('verify_user_id'))
-<div class="spam-alert">
-    <div class="spam-alert__icon">📬</div>
-    <div class="spam-alert__body">
-        <div class="spam-alert__title">Email OTP sudah dikirim!</div>
-        <div class="spam-alert__msg">
-            Jika tidak ada di <strong>inbox</strong>, silakan cek di
-            <strong>📁 folder Spam / Junk</strong> dan tandai sebagai
-            <em>"Bukan Spam"</em> agar email berikutnya masuk inbox.
-        </div>
-    </div>
-</div>
-@endif
-
 {{-- Simulated Inbox (fallback jika mail gagal) --}}
 @if(session()->has('verify_otp') && session('verify_mail_sent') !== true)
 <div class="sandbox-box">

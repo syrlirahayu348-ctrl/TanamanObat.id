@@ -101,12 +101,15 @@
             <button type="submit" class="btn btn-primary btn-lg">💾 Update Tanaman</button>
             <a href="{{ route('editor.plants.index') }}" class="btn btn-outline btn-lg">Batal</a>
             @if(auth()->user()->isAdmin())
-            <form method="POST" action="{{ route('admin.plants.destroy', $plant) }}" style="margin-left:auto;">
-                @csrf @method('DELETE')
-                <button type="submit" class="btn btn-danger btn-lg" data-confirm="Hapus tanaman '{{ $plant->local_name }}'?">🗑️ Hapus</button>
-            </form>
+            <button type="submit" form="deleteForm" class="btn btn-danger btn-lg" style="margin-left:auto;" data-confirm="Hapus tanaman '{{ $plant->local_name }}'?">🗑️ Hapus</button>
             @endif
         </div>
     </form>
+
+    @if(auth()->user()->isAdmin())
+    <form id="deleteForm" method="POST" action="{{ route('admin.plants.destroy', $plant) }}" style="display:none;">
+        @csrf @method('DELETE')
+    </form>
+    @endif
 </div>
 @endsection

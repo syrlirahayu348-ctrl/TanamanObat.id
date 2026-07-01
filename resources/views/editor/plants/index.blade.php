@@ -19,9 +19,10 @@
                 <th>#</th>
                 <th>Tanaman</th>
                 <th>Kategori</th>
+                <th>Rating</th>
                 <th>Status</th>
                 <th>Views</th>
-                @if(auth()->user()->isAdmin())<th>Dibuat Oleh</th>@endif
+                <th>Dibuat Oleh</th>
                 <th>Tanggal</th>
                 <th>Aksi</th>
             </tr>
@@ -47,14 +48,27 @@
                     </span>
                 </td>
                 <td>
+                    @php
+                        $avg = $plant->averageRating();
+                        $count = $plant->comments->count();
+                    @endphp
+                    @if($count > 0)
+                        <div style="display:flex;align-items:center;gap:4px;font-family:'Inter',sans-serif;">
+                            <span style="color:#fbbf24;font-size:15px;">★</span>
+                            <span style="font-weight:700;color:var(--text-primary);font-size:13.5px;">{{ number_format($avg, 1) }}</span>
+                            <span style="color:var(--text-muted);font-size:11.5px;">({{ $count }})</span>
+                        </div>
+                    @else
+                        <div style="color:var(--text-muted);font-size:12px;font-family:'Inter',sans-serif;">Belum ada</div>
+                    @endif
+                </td>
+                <td>
                     <span class="badge {{ $plant->status === 'published' ? 'badge-published' : 'badge-draft' }}">
                         {{ $plant->status === 'published' ? '✓ Terbit' : '✎ Draft' }}
                     </span>
                 </td>
                 <td>{{ number_format($plant->views) }}</td>
-                @if(auth()->user()->isAdmin())
                 <td style="font-family:'Inter',sans-serif;">{{ $plant->user->name }}</td>
-                @endif
                 <td style="font-family:'Inter',sans-serif;">{{ $plant->created_at->format('d M Y') }}</td>
                 <td>
                     <div style="display:flex;gap:6px;">
@@ -62,7 +76,7 @@
                         <a href="{{ route('editor.plants.edit', $plant) }}" class="btn btn-outline btn-sm" title="Edit">✏️</a>
                         @if(auth()->user()->isAdmin())
                         <form method="POST" action="{{ route('admin.plants.destroy', $plant) }}">
-                            @csrf @method('DELETE')
+                             @csrf @method('DELETE')
                             <button type="submit" class="btn btn-danger btn-sm" title="Hapus" data-confirm="Hapus tanaman '{{ $plant->local_name }}'? Tindakan ini tidak bisa dibatalkan.">🗑️</button>
                         </form>
                         @endif
@@ -71,7 +85,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="8" style="text-align:center;padding:48px;color:var(--text-muted);font-family:'Inter',sans-serif;">
+                <td colspan="9" style="text-align:center;padding:48px;color:var(--text-muted);font-family:'Inter',sans-serif;">
                     <div style="font-size:40px;margin-bottom:12px;">🌵</div>
                     Belum ada tanaman. <a href="{{ route('editor.plants.create') }}" style="color:var(--green-600);">Tambah sekarang</a>
                 </td>

@@ -44,6 +44,8 @@
         @error('email') <div class="form-error">⚠ {{ $message }}</div> @enderror
     </div>
 
+
+
     <div class="form-group">
         <label class="form-label">Password <span class="required">*</span></label>
         <div style="position:relative;">
@@ -89,16 +91,14 @@
         </div>
     </div>
 
-    <div class="form-group">
-        <label class="form-label">Keamanan (CAPTCHA) <span class="required">*</span></label>
-        <div style="display:flex;align-items:center;gap:12px;">
-            <div style="background:var(--green-50);border:1.5px solid var(--green-200);border-radius:var(--radius-md);padding:10px 16px;font-family:'Inter',sans-serif;font-weight:700;color:var(--green-700);font-size:16px;letter-spacing:1px;white-space:nowrap;user-select:none;">
-                {{ $num1 }} + {{ $num2 }} =
-            </div>
-            <input type="number" name="captcha" class="form-control {{ $errors->has('captcha') ? 'is-invalid' : '' }}" placeholder="Jawaban" required autocomplete="off" style="max-width:120px;">
-        </div>
-        @error('captcha') <div class="form-error">⚠ {{ $message }}</div> @enderror
-    </div>
+<div class="form-group">
+    <label class="form-label">Keamanan (CAPTCHA) <span class="required">*</span></label>
+    @php $recaptchaKey = env('RECAPTCHA_SITE_KEY'); @endphp
+    @if($recaptchaKey)
+        <div class="g-recaptcha" data-sitekey="{{ $recaptchaKey }}"></div>
+        @error('g-recaptcha-response') <div class="form-error">⚠ {{ $message }}</div> @enderror
+    @endif
+</div>
 
     <div style="margin-bottom:20px;">
         <label style="display:flex;align-items:flex-start;gap:8px;font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;color:var(--text-secondary);">
@@ -107,9 +107,19 @@
         </label>
     </div>
 
-    <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;">
+    <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;margin-bottom:12px;">
         🌿 Buat Akun
     </button>
+
+    <a href="{{ route('login.google') }}" class="btn btn-outline w-full" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; border:1px solid #d1d5db; border-radius:8px; text-decoration:none; color:#374151; background:#ffffff; font-family:'Inter',sans-serif; font-size:14px; font-weight:500; transition:all 0.2s ease-in-out; margin-bottom:12px;">
+        <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17.64 9.2045c0-.6381-.0573-1.2518-.1636-1.8409H9v3.4814h4.8436c-.2086 1.125-.8427 2.0782-1.7959 2.7164v2.2581h2.9087c1.7018-1.5668 2.6836-3.874 2.6836-6.615z" fill="#4285F4"/>
+            <path d="M9 18c2.43 0 4.4673-.806 5.9564-2.1805l-2.9087-2.2581c-.8059.54-1.8368.859-3.0477.859-2.344 0-4.3282-1.5831-5.036-3.7104H.9574v2.3318C2.4382 15.9832 5.4818 18 9 18z" fill="#34A853"/>
+            <path d="M3.964 10.71c-.18-.54-.2822-1.1168-.2822-1.71s.1023-1.17.2823-1.71V4.9582H.9573A8.9965 8.9965 0 0 0 0 9c0 1.4523.3477 2.8227.9573 4.0418l3.0067-2.3318z" fill="#FBBC05"/>
+            <path d="M9 3.5795c1.3214 0 2.5077.4541 3.4405 1.346l2.5813-2.5814C13.4632.8918 11.4259 0 9 0 5.4818 0 2.4382 2.0168.9573 4.9582l3.0067 2.3318C4.6718 5.1627 6.656 3.5795 9 3.5795z" fill="#EA4335"/>
+        </svg>
+        Daftar dengan Google
+    </a>
 </form>
 
 <div class="auth-divider">atau</div>
@@ -118,12 +128,30 @@
 </div>
 
 @push('scripts')
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 <script>
 function togglePassword(inputId, btnId) {
     const input = document.getElementById(inputId);
     const btn = document.getElementById(btnId);
-    if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
-    else { input.type = 'password'; btn.textContent = '👁'; }
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+    }
+}
+
+function updateRuleStatus(id, met) {
+    const el = document.getElementById(id);
+    const icon = el.querySelector('.icon');
+    if (met) {
+        el.style.color = '#22c55e'; // Green
+        icon.textContent = '✓';
+    } else {
+        el.style.color = '#ef4444'; // Red
+        icon.textContent = '✗';
+    }
 }
 
 function selectRole(role) {
@@ -195,17 +223,7 @@ passwordInput.addEventListener('input', () => {
     }
 });
 
-function updateRuleStatus(id, met) {
-    const el = document.getElementById(id);
-    const icon = el.querySelector('.icon');
-    if (met) {
-        el.style.color = '#22c55e'; // Green
-        icon.textContent = '✓';
-    } else {
-        el.style.color = '#ef4444'; // Red
-        icon.textContent = '✗';
-    }
-}
+
 </script>
 @endpush
 @endsection

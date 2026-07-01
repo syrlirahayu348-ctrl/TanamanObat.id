@@ -18,6 +18,7 @@ class User extends Authenticatable
         'role',
         'avatar',
         'is_active',
+        'google_id',
     ];
 
     protected $hidden = [
@@ -75,5 +76,10 @@ class User extends Authenticatable
     public function favoritePlants()
     {
         return $this->belongsToMany(Plant::class, 'favorites')->withTimestamps();
+    }
+
+    public function comments()
+    {
+        return $this->hasMany(Comment::class);
     }
 }

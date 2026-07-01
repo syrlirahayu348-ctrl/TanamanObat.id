@@ -19,8 +19,16 @@ class ProfileController extends Controller
 
         $request->validate([
             'name'   => ['required', 'string', 'max:255'],
-            'email'  => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'email'  => [
+                'required',
+                'email',
+                'max:255',
+                'unique:users,email,' . $user->id,
+                'regex:/^[a-zA-Z0-9._%+-]+@gmail\.com$/i'
+            ],
             'avatar' => ['nullable', 'image', 'max:2048'],
+        ], [
+            'email.regex' => 'Anda harus menggunakan alamat Gmail asli (@gmail.com).',
         ]);
 
         $data = [
@@ -42,7 +50,7 @@ class ProfileController extends Controller
     {
         $request->validate([
             'current_password' => ['required'],
-            'password'         => ['required', 'confirmed', Rules\Password::defaults()],
+            'password'         => ['required', 'confirmed', Rules\Password::min(8)->mixedCase()->symbols()],
         ]);
 
         $user = auth()->user();

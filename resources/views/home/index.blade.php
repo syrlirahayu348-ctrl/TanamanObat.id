@@ -170,17 +170,41 @@
     <div class="container text-center">
         <div class="reveal">
             <div style="font-size:56px;margin-bottom:20px;">🌿</div>
-            <h2 style="font-size:clamp(28px,4vw,42px);color:white;margin-bottom:16px;">Bergabunglah dengan Komunitas</h2>
-            <p style="font-size:18px;color:rgba(255,255,255,0.75);margin-bottom:36px;max-width:560px;margin-left:auto;margin-right:auto;font-family:'Inter',sans-serif;">
-                Daftar sekarang untuk menyimpan tanaman favorit Anda dan mendapatkan informasi terbaru seputar tanaman obat nusantara.
-            </p>
             @guest
+                <h2 style="font-size:clamp(28px,4vw,42px);color:white;margin-bottom:16px;">Bergabunglah dengan Komunitas</h2>
+                <p style="font-size:18px;color:rgba(255,255,255,0.75);margin-bottom:36px;max-width:560px;margin-left:auto;margin-right:auto;font-family:'Inter',sans-serif;">
+                    Daftar sekarang untuk menyimpan tanaman favorit Anda dan mendapatkan informasi terbaru seputar tanaman obat nusantara.
+                </p>
                 <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
                     <a href="{{ route('register') }}" class="btn btn-white btn-lg">🌟 Daftar Gratis</a>
                     <a href="{{ route('login') }}" class="btn btn-outline btn-lg" style="border-color:rgba(255,255,255,0.4);color:white;">Sudah punya akun? Masuk</a>
                 </div>
             @else
-                <a href="{{ route('plants.index') }}" class="btn btn-white btn-lg">🌿 Jelajahi Ensiklopedia</a>
+                @if(auth()->user()->isAdmin())
+                    <h2 style="font-size:clamp(28px,4vw,42px);color:white;margin-bottom:16px;">Panel Kontrol Administrator</h2>
+                    <p style="font-size:18px;color:rgba(255,255,255,0.75);margin-bottom:36px;max-width:560px;margin-left:auto;margin-right:auto;font-family:'Inter',sans-serif;">
+                        Halo {{ auth()->user()->name }}, Anda masuk sebagai Administrator. Kelola basis data tanaman, kategori, pesan kontak, dan manajemen pengguna melalui dashboard admin.
+                    </p>
+                    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+                        <a href="{{ route('admin.dashboard') }}" class="btn btn-white btn-lg">⚙️ Dashboard Admin</a>
+                        <a href="{{ route('plants.index') }}" class="btn btn-outline btn-lg" style="border-color:rgba(255,255,255,0.4);color:white;">🌿 Lihat Ensiklopedia</a>
+                    </div>
+                @elseif(auth()->user()->isEditor())
+                    <h2 style="font-size:clamp(28px,4vw,42px);color:white;margin-bottom:16px;">Panel Kerja Editor</h2>
+                    <p style="font-size:18px;color:rgba(255,255,255,0.75);margin-bottom:36px;max-width:560px;margin-left:auto;margin-right:auto;font-family:'Inter',sans-serif;">
+                        Halo {{ auth()->user()->name }}, Anda masuk sebagai Editor. Tambahkan tanaman baru atau edit konten herbal nusantara yang sudah ada.
+                    </p>
+                    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+                        <a href="{{ route('editor.plants.index') }}" class="btn btn-white btn-lg">📝 Kelola Data Tanaman</a>
+                        <a href="{{ route('plants.index') }}" class="btn btn-outline btn-lg" style="border-color:rgba(255,255,255,0.4);color:white;">🌿 Lihat Ensiklopedia</a>
+                    </div>
+                @else
+                    <h2 style="font-size:clamp(28px,4vw,42px);color:white;margin-bottom:16px;">Selamat Datang Kembali, {{ auth()->user()->name }}!</h2>
+                    <p style="font-size:18px;color:rgba(255,255,255,0.75);margin-bottom:36px;max-width:560px;margin-left:auto;margin-right:auto;font-family:'Inter',sans-serif;">
+                        Temukan khasiat herbal nusantara lainnya, kelola daftar tanaman favorit Anda, atau berikan kontribusi ulasan Anda hari ini.
+                    </p>
+                    <a href="{{ route('plants.index') }}" class="btn btn-white btn-lg">🌿 Jelajahi Ensiklopedia</a>
+                @endif
             @endguest
         </div>
     </div>

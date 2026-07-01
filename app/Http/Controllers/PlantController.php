@@ -41,7 +41,7 @@ class PlantController extends Controller
         abort_if($plant->status !== 'published', 404);
 
         $plant->incrementViews();
-        $plant->load(['category', 'images', 'user']);
+        $plant->load(['category', 'images', 'user', 'comments.user']);
 
         $relatedPlants = Plant::published()
             ->where('category_id', $plant->category_id)
@@ -53,6 +53,10 @@ class PlantController extends Controller
             ? $plant->isFavoritedBy(auth()->user())
             : false;
 
-        return view('plants.show', compact('plant', 'relatedPlants', 'isFavorited'));
+        $userComment = auth()->check()
+            ? $plant->comments()->where('user_id', auth()->id())->first()
+            : null;
+
+        return view('plants.show', compact('plant', 'relatedPlants', 'isFavorited', 'userComment'));
     }
 }

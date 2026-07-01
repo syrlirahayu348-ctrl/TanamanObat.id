@@ -48,7 +48,7 @@
                             </div>
                             <div>
                                 <div style="font-weight:700;color:var(--text-primary);">Email Dukungan</div>
-                                <div style="color:#0284c7;font-weight:600;">admin@tanamanobat.id</div>
+                                <div style="color:#0284c7;font-weight:600;">sherlyrahayu348@gmail.com</div>
                             </div>
                         </div>
 
@@ -59,7 +59,7 @@
                             </div>
                             <div>
                                 <div style="font-weight:700;color:var(--text-primary);">Kantor Pusat</div>
-                                <div style="color:#6d28d9;line-height:1.4;">Jl. Nusantara Herbal No. 45, Menteng, Jakarta, Indonesia</div>
+                                <div style="color:#6d28d9;line-height:1.4;">Jl. Pramuka, Desa Air putih, kec. bengkalis, kab. bengkalis, prov. riau, Indonesia</div>
                             </div>
                         </div>
                     </div>

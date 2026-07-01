@@ -4,16 +4,87 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\SendOtpMail;
 use Exception;
+use App\Services\WhatsAppService;
+
+use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
 {
+    public function redirectToGoogle()
+    {
+        $driver = Socialite::driver('google');
+        if (app()->environment(['local', 'development', 'testing'])) {
+            $driver->setHttpClient(new \GuzzleHttp\Client(['verify' => false]));
+        }
+        return $driver->redirect();
+    }
+
+    // Handle Google OAuth callback
+    public function handleGoogleCallback()
+    {
+        try {
+            $driver = Socialite::driver('google');
+            if (app()->environment(['local', 'development', 'testing'])) {
+                $driver->setHttpClient(new \GuzzleHttp\Client(['verify' => false]));
+            }
+            $googleUser = $driver->user();
+            
+            // Search user by google_id or email
+            $user = User::where('google_id', $googleUser->id)
+                ->orWhere('email', $googleUser->email)
+                ->first();
+
+            if ($user) {
+                // If user exists but google_id is not set, update it
+                if (empty($user->google_id)) {
+                    $user->update([
+                        'google_id' => $googleUser->id,
+                    ]);
+                }
+            } else {
+                // Register a new user
+                $user = User::create([
+                    'name' => $googleUser->name,
+                    'email' => $googleUser->email,
+                    'google_id' => $googleUser->id,
+                    'role' => 'user',
+                    'avatar' => $googleUser->avatar,
+                    'is_active' => true,
+                ]);
+            }
+
+            // Always mark email as verified for Google account
+            if (empty($user->email_verified_at)) {
+                $user->email_verified_at = now();
+                $user->save();
+            }
+
+            // Check if active
+            if (!$user->is_active) {
+                return redirect()->route('login')->withErrors([
+                    'email' => 'Akun Anda dinonaktifkan. Silakan hubungi admin.',
+                ]);
+            }
+
+            Auth::login($user, true);
+
+            return redirect()->intended('/')->with('success', 'Selamat datang, ' . $user->name . '!');
+
+        } catch (Exception $e) {
+            \Illuminate\Support\Facades\Log::error("[Google Login Error] " . $e->getMessage());
+            return redirect()->route('login')->withErrors([
+                'email' => 'Gagal masuk menggunakan Google. Silakan coba lagi.',
+            ]);
+        }
+    }
     // Show login form
     public function loginForm()
     {
@@ -37,13 +108,6 @@ class AuthController extends Controller
             'email'    => ['required', 'email'],
             'password' => ['required'],
         ]);
-
-        $user = User::where('email', $credentials['email'])->first();
-
-        if ($user && !$user->is_active) {
-            RateLimiter::hit($rateKey, 120);
-            return back()->withErrors(['email' => 'Akun Anda telah dinonaktifkan oleh administrator.'])->withInput();
-        }
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             if (Auth::user()->email_verified_at === null) {
@@ -99,11 +163,7 @@ class AuthController extends Controller
     // Show register form
     public function registerForm()
     {
-        $num1 = rand(1, 9);
-        $num2 = rand(1, 9);
-        session(['register_captcha' => $num1 + $num2]);
-
-        return view('auth.register', compact('num1', 'num2'));
+        return view('auth.register');
     }
 
     // Handle register
@@ -119,67 +179,102 @@ class AuthController extends Controller
             ])->withInput();
         }
 
-        $request->validate([
-            'name'     => ['required', 'string', 'max:255'],
-            'email'    => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'confirmed', Rules\Password::min(8)->mixedCase()->symbols()],
-            'captcha'  => ['required', 'integer'],
-            'role'     => ['required', 'string', 'in:user,editor'],
-        ]);
-
-        // Validate Captcha
-        $expectedCaptcha = session('register_captcha');
-        if ($request->captcha != $expectedCaptcha) {
-            RateLimiter::hit($rateKey, 120);
-            return back()->withErrors([
-                'captcha' => 'Jawaban CAPTCHA salah.',
-            ])->withInput();
+        // Helper to check Gmail address validity
+        function isValidGmail(string $email): bool {
+            // Must be a Gmail address
+            $domain = substr(strrchr($email, "@"), 1);
+            if (strtolower($domain) !== 'gmail.com') {
+                return false;
+            }
+            // Verify MX records exist for gmail.com (basic sanity check)
+            return checkdnsrr($domain, 'MX');
         }
 
-        // Create User (unverified)
-        $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'password' => Hash::make($request->password),
-            'role'     => $request->role,
-            'is_active' => true,
+        // ---------- Registration validation ----------
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'role' => ['required', 'string', 'in:user,editor'],
+            'g-recaptcha-response' => ['required'],
         ]);
+
+
+
+        // Reject fake Gmail addresses
+        if (!isValidGmail($request->email)) {
+            return back()
+                ->withErrors(['email' => 'Hanya alamat Gmail yang valid diperbolehkan.'])
+                ->withInput();
+        }
+
+        // Verify Google reCAPTCHA
+        $recaptchaResponse = $request->input('g-recaptcha-response');
+        $secret = env('RECAPTCHA_SECRET_KEY');
+
+        $http = \Illuminate\Support\Facades\Http::asForm();
+        // Disable SSL verification only in non‑production environments to avoid curl error 60
+        if (app()->environment(['local', 'development', 'testing'])) {
+            $http = $http->withOptions(['verify' => false]);
+        }
+
+        $verification = $http->post('https://www.google.com/recaptcha/api/siteverify', [
+            'secret'   => $secret,
+            'response' => $recaptchaResponse,
+            'remoteip' => $request->ip(),
+        ]);
+
+        if (!($verification->json('success') ?? false)) {
+            return back()
+                ->withErrors(['g-recaptcha-response' => 'CAPTCHA verification failed. Please try again.'])
+                ->withInput();
+        }
+
+
+            $registrationData = [
+                'name'     => $request->name,
+                'email'    => $request->email,
+                'password' => Hash::make($request->password),
+                'role'     => $request->role,
+                'is_active'=> true,
+            ];
+        session(['register_data' => $registrationData]);
 
         // Generate OTP
         $otp = rand(100000, 999999);
         session([
-            'verify_user_id' => $user->id,
             'verify_otp'     => $otp,
-            'verify_email'   => $user->email,
+            'verify_email'   => $request->email,
         ]);
 
-        // Kirim email OTP
-        $mailStatus = 'success';
+        $mailStatus = 'skipped';
+        $whatsAppStatus = 'skipped';
+
+// Send email OTP only
         try {
-            \Illuminate\Support\Facades\Log::info("[OTP Register] Mengirim OTP ke: {$user->email}, OTP: {$otp}");
-            Mail::to($user->email)->send(new SendOtpMail($otp, $user->name));
-            \Illuminate\Support\Facades\Log::info("[OTP Register] Email berhasil dikirim ke: {$user->email}");
+            \Illuminate\Support\Facades\Log::info("[OTP Register] Mengirim OTP ke email: {$request->email}, OTP: {$otp}");
+            Mail::to($request->email)->send(new SendOtpMail($otp, $request->name));
+            $mailStatus = 'success';
         } catch (Exception $e) {
             $mailStatus = 'error';
-            \Illuminate\Support\Facades\Log::error("[OTP Register] GAGAL kirim email ke {$user->email}: " . $e->getMessage());
-            \Illuminate\Support\Facades\Log::error("[OTP Register] Stack trace: " . $e->getTraceAsString());
+            \Illuminate\Support\Facades\Log::error("[OTP Register] GAGAL kirim email ke {$request->email}: " . $e->getMessage());
         }
+        $whatsAppStatus = 'skipped';
 
         RateLimiter::clear($rateKey);
 
-        if ($mailStatus === 'error') {
-            session(['verify_mail_sent' => false]);
-            return redirect()->route('verification.notice')->with('success', 'Akun berhasil dibuat! (Catatan: Email verifikasi gagal terkirim. Anda dapat menggunakan kode OTP simulasi di bawah untuk melanjutkan pengujian).');
-        }
-
-        session(['verify_mail_sent' => true]);
-        return redirect()->route('verification.notice')->with('success', 'Akun berhasil dibuat! Kode verifikasi OTP telah dikirim ke email Anda.');
+        // Store status flags for debugging if needed
+        session([
+            'verify_mail_sent' => $mailStatus === 'success',
+            'verify_whatsapp_sent' => $whatsAppStatus === 'sent',
+        ]);
+        return redirect()->route('verification.notice')->with('success', 'Akun berhasil dibuat! Kode OTP telah dikirim via email.');
     }
 
     // Show email verification form
-    public function verifyForm()
+    public function verifyForm(Request $request)
     {
-        if (!session()->has('verify_user_id')) {
+        if (!session()->has('verify_otp')) {
             return redirect()->route('login');
         }
 
@@ -193,20 +288,34 @@ class AuthController extends Controller
             'otp' => ['required', 'digits:6'],
         ]);
 
-        $userId = session('verify_user_id');
         $otp = session('verify_otp');
+        $email = session('verify_email');
+        $registerData = session('register_data');
 
-        if (!$userId || !$otp) {
-            return redirect()->route('login')->withErrors(['email' => 'Sesi verifikasi habis.']);
+        // If registration data exists, this is a new account verification
+        if ($registerData) {
+            if ($request->otp != $otp) {
+                return back()->withErrors(['otp' => 'Kode verifikasi OTP salah.']);
+            }
+            // Create the user now
+            $user = User::create($registerData);
+            $user->email_verified_at = now();
+            $user->save();
+            // Cleanup registration data
+            session()->forget('register_data');
+        } else {
+            // Existing login verification flow
+            $userId = session('verify_user_id');
+            if (!$userId || !$otp) {
+                return redirect()->route('login')->withErrors(['email' => 'Sesi verifikasi habis.']);
+            }
+            if ($request->otp != $otp) {
+                return back()->withErrors(['otp' => 'Kode verifikasi OTP salah.']);
+            }
+            $user = User::findOrFail($userId);
+            $user->email_verified_at = now();
+            $user->save();
         }
-
-        if ($request->otp != $otp) {
-            return back()->withErrors(['otp' => 'Kode verifikasi OTP salah.']);
-        }
-
-        $user = User::findOrFail($userId);
-        $user->email_verified_at = now();
-        $user->save();
 
         // Login user
         Auth::login($user);
